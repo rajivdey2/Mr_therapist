@@ -4,23 +4,20 @@ import { Send, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   text: string;
   isUser: boolean;
 }
 
-const therapistResponses = [
+// Fallback responses in case AI fails
+const fallbackResponses = [
   "Ah, fascinating. Tell me more about how you think that's working out for you *adjusts imaginary glasses*",
   "And how does that make you feel? *pretends to write in notepad*",
   "Have you considered that maybe, just maybe, you're overthinking this? *raises eyebrow dramatically*",
   "Let's unpack that... right after I unpack my lunch *rustles paper bag*",
   "Interesting choice. I mean, who am I to judge? *clearly judging*",
-  "You know what Freud would say about that... absolutely nothing, he's dead.",
-  "That's completely normal! Well, define normal... *smirks*",
-  "Sounds like someone needs a hug. Not from me though, I'm a professional.",
-  "Have you tried turning yourself off and on again?",
-  "That's... unique. Like a snowflake. A very confused snowflake.",
 ];
 
 const Index = () => {
@@ -31,9 +28,9 @@ const Index = () => {
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
 
-  const getRandomResponse = () => {
-    const randomIndex = Math.floor(Math.random() * therapistResponses.length);
-    return therapistResponses[randomIndex];
+  const getFallbackResponse = () => {
+    const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
+    return fallbackResponses[randomIndex];
   };
 
   const handleSend = async () => {
@@ -50,12 +47,38 @@ const Index = () => {
     setInput("");
     setIsTyping(true);
 
-    // Simulate typing delay
-    setTimeout(() => {
-      const botResponse = { text: getRandomResponse(), isUser: false };
-      setMessages((prev) => [...prev, botResponse]);
-      setIsTyping(false);
-    }, 1500);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-response', {
+        body: { userMessage: input }
+      });
+
+      if (error) throw error;
+
+      setTimeout(() => {
+        const botResponse = { 
+          text: data.response || getFallbackResponse(), 
+          isUser: false 
+        };
+        setMessages((prev) => [...prev, botResponse]);
+        setIsTyping(false);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      setTimeout(() => {
+        const botResponse = { 
+          text: getFallbackResponse(), 
+          isUser: false 
+        };
+        setMessages((prev) => [...prev, botResponse]);
+        setIsTyping(false);
+      }, 1000);
+
+      toast({
+        description: "My AI brain had a moment. Using my backup sarcasm instead!",
+        duration: 3000,
+      });
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
