@@ -11,18 +11,15 @@ interface Message {
   isUser: boolean;
 }
 
-// Fallback responses in case AI fails
+// Minimal fallback responses - only used if AI fails completely
 const fallbackResponses = [
-  "Ah, fascinating. Tell me more about how you think that's working out for you *adjusts imaginary glasses*",
-  "And how does that make you feel? *pretends to write in notepad*",
-  "Have you considered that maybe, just maybe, you're overthinking this? *raises eyebrow dramatically*",
-  "Let's unpack that... right after I unpack my lunch *rustles paper bag*",
-  "Interesting choice. I mean, who am I to judge? *clearly judging*",
+  "Oh great, my circuits are acting up again. *taps head dramatically*",
+  "Technical difficulties... how ironic for a digital therapist *rolls virtual eyes*",
 ];
 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { text: "Welcome! I'm Dr. Sarcasm, your totally qualified* digital therapist. How can I pretend to help you today? (*terms and conditions apply)", isUser: false },
+    { text: "Well, well, well... *adjusts virtual therapy couch* I'm Dr. Sarcasm, your AI therapist with a PhD in eye-rolling. How shall we unpack your emotional baggage today?", isUser: false },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -36,7 +33,7 @@ const Index = () => {
   const handleSend = async () => {
     if (!input.trim()) {
       toast({
-        description: "Come on, give me something to work with here!",
+        description: "Silent treatment, really? *taps notepad impatiently*",
         duration: 2000,
       });
       return;
@@ -54,9 +51,13 @@ const Index = () => {
 
       if (error) throw error;
 
+      if (!data?.response) {
+        throw new Error('No response from AI');
+      }
+
       setTimeout(() => {
         const botResponse = { 
-          text: data.response || getFallbackResponse(), 
+          text: data.response, 
           isUser: false 
         };
         setMessages((prev) => [...prev, botResponse]);
@@ -75,7 +76,7 @@ const Index = () => {
       }, 1000);
 
       toast({
-        description: "My AI brain had a moment. Using my backup sarcasm instead!",
+        description: "Even AI therapists need a coffee break sometimes. *sips virtual espresso*",
         duration: 3000,
       });
     }
