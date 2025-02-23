@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Send, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,17 +18,41 @@ const fallbackResponses = [
 
 const Index = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { text: "Well, well, well... *adjusts virtual therapy couch* I'm Dr. Sarcasm, your AI therapist with a PhD in eye-rolling. How shall we unpack your emotional baggage today?", isUser: false },
+    { 
+      text: "Well, well, well... *adjusts virtual therapy couch* I'm Dr. Sarcasm, your AI therapist with a PhD in eye-rolling. How shall we unpack your emotional baggage today?", 
+      isUser: false 
+    }
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
 
-  const getFallbackResponse = () => {
-    const randomIndex = Math.floor(Math.random() * fallbackResponses.length);
-    return fallbackResponses[randomIndex];
+  // Get a random fallback response
+  const getFallbackResponse = () => fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+
+  // Function to fetch AI response
+  const fetchAIResponse = async (userMessage: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-response", {
+        body: { prompt: userMessage }, // Fix: Ensure it correctly sends 'prompt'
+      });
+
+      if (error) throw error;
+
+      console.log("AI Response:", data); // Debugging log
+
+      if (!data?.response) {
+        throw new Error("No response from AI");
+      }
+
+      return data.response;
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      return null; // Return null to trigger fallback response
+    }
   };
 
+  // Send message function
   const handleSend = async () => {
     if (!input.trim()) {
       toast({
@@ -44,44 +67,24 @@ const Index = () => {
     setInput("");
     setIsTyping(true);
 
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-response', {
-        body: { userMessage: input }
-      });
+    const aiResponse = await fetchAIResponse(input);
 
-      if (error) throw error;
+    setTimeout(() => {
+      const botResponse = { 
+        text: aiResponse || getFallbackResponse(), 
+        isUser: false 
+      };
 
-      if (!data?.response) {
-        throw new Error('No response from AI');
+      setMessages((prev) => [...prev, botResponse]);
+      setIsTyping(false);
+
+      if (!aiResponse) {
+        toast({ description: "Even AI therapists need a coffee break sometimes. *sips virtual espresso*", duration: 3000 });
       }
-
-      setTimeout(() => {
-        const botResponse = { 
-          text: data.response, 
-          isUser: false 
-        };
-        setMessages((prev) => [...prev, botResponse]);
-        setIsTyping(false);
-      }, 1000);
-
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      setTimeout(() => {
-        const botResponse = { 
-          text: getFallbackResponse(), 
-          isUser: false 
-        };
-        setMessages((prev) => [...prev, botResponse]);
-        setIsTyping(false);
-      }, 1000);
-
-      toast({
-        description: "Even AI therapists need a coffee break sometimes. *sips virtual espresso*",
-        duration: 3000,
-      });
-    }
+    }, 1000);
   };
 
+  // Handle Enter key press
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -91,6 +94,7 @@ const Index = () => {
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8 h-screen flex flex-col">
+      {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 mb-2">
           <Brain className="w-8 h-8 text-primary" />
@@ -99,13 +103,12 @@ const Index = () => {
         <p className="text-muted-foreground">Your sassiest virtual therapist</p>
       </div>
 
+      {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto mb-4 space-y-4 p-4 rounded-lg bg-white/50 backdrop-blur-sm">
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`message-bubble ${
-              message.isUser ? "user-message" : "bot-message"
-            }`}
+            className={`message-bubble ${message.isUser ? "user-message" : "bot-message"}`}
           >
             {message.text}
           </div>
@@ -121,6 +124,7 @@ const Index = () => {
         )}
       </div>
 
+      {/* Input Field */}
       <div className="flex gap-2 items-center">
         <Input
           value={input}
