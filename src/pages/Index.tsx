@@ -11,10 +11,34 @@ interface Message {
   isUser: boolean;
 }
 
-// Minimal fallback responses - only used if AI fails completely
+// Structured therapeutic responses for common situations
+const therapeuticResponses = [
+  {
+    keywords: ["breakup", "broke up", "ex", "relationship ended"],
+    response: "I'm really sorry you're feeling this way *offers supportive presence*. Healing takes time, and it's okay to grieve. Try to focus on yourself—reconnect with hobbies, friends, and self-care. What's one small thing you can do today to take care of yourself?"
+  },
+  {
+    keywords: ["study", "exam", "school", "academic", "college", "university", "homework", "grades"],
+    response: "It's completely valid to feel overwhelmed by academic pressure *nods understandingly*. Break your workload into smaller steps and set realistic goals. Remember, progress matters more than perfection. Have you tried scheduling short breaks to refresh your mind?"
+  },
+  {
+    keywords: ["family", "parents", "expectations", "pressure", "mom", "dad", "siblings"],
+    response: "That sounds really challenging *listens attentively*. Your feelings matter, and it's important to balance their expectations with your happiness. Have you considered having an open conversation with them? Your dreams and well-being are just as important."
+  },
+  {
+    keywords: ["money", "financial", "finances", "debt", "bills", "expensive"],
+    response: "I hear how stressful this financial situation is *shows empathetic concern*. Start by prioritizing essentials and creating a small, manageable plan. Remember, this is a phase—your situation can and will improve with time. What's one step you can take today?"
+  },
+  {
+    keywords: ["hopeless", "worthless", "giving up", "no point", "can't go on", "falling apart"],
+    response: "I'm here with you during this difficult time *extends caring support*. You're not alone, and your struggles don't define your future. Even small steps forward count. Please be gentle with yourself—what's one thing that brings you even a little comfort right now?"
+  }
+];
+
+// Minimal fallback responses - only used if no keyword matches and AI fails
 const fallbackResponses = [
-  "I apologize for the brief pause. Let's continue our conversation *offers gentle smile*",
-  "Let's take a mindful moment and try again *breathes calmly*",
+  "I hear you, and I want you to know that your feelings are valid *offers supportive presence*. Would you like to tell me more about what's on your mind?",
+  "Thank you for sharing that with me *nods gently*. Let's explore these feelings together. What support do you need right now?",
 ];
 
 const Index = () => {
@@ -28,32 +52,41 @@ const Index = () => {
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
 
-  // Get a random fallback response
-  const getFallbackResponse = () => fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+  // Function to find matching therapeutic response based on keywords
+  const findTherapeuticResponse = (message: string) => {
+    const lowercaseMessage = message.toLowerCase();
+    const matchingResponse = therapeuticResponses.find(response =>
+      response.keywords.some(keyword => lowercaseMessage.includes(keyword))
+    );
+    return matchingResponse?.response;
+  };
 
-  // Function to fetch AI response
-  const fetchAIResponse = async (userMessage: string) => {
+  // Get a response, prioritizing AI, then keyword matches, then fallbacks
+  const getResponse = async (userMessage: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("generate-response", {
-        body: { userMessage }, 
+        body: { userMessage },
       });
 
-      if (error) throw error;
-
-      console.log("AI Response:", data); // Debugging log
-
-      if (!data?.response) {
-        throw new Error("No response from AI");
+      if (error || !data?.response) {
+        throw new Error("AI response failed");
       }
 
       return data.response;
     } catch (error) {
       console.error("Error getting AI response:", error);
-      return null; // Return null to trigger fallback response
+      
+      // Try to find a matching therapeutic response
+      const therapeuticResponse = findTherapeuticResponse(userMessage);
+      if (therapeuticResponse) {
+        return therapeuticResponse;
+      }
+
+      // If no matches, use fallback
+      return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
     }
   };
 
-  // Send message function
   const handleSend = async () => {
     if (!input.trim()) {
       toast({
@@ -68,23 +101,15 @@ const Index = () => {
     setInput("");
     setIsTyping(true);
 
-    const aiResponse = await fetchAIResponse(input);
+    const response = await getResponse(input);
 
     setTimeout(() => {
       const botResponse = { 
-        text: aiResponse || getFallbackResponse(), 
+        text: response,
         isUser: false 
       };
-
       setMessages((prev) => [...prev, botResponse]);
       setIsTyping(false);
-
-      if (!aiResponse) {
-        toast({ 
-          description: "I apologize for the pause. Let's continue our conversation with renewed focus.", 
-          duration: 3000 
-        });
-      }
     }, 1000);
   };
 
