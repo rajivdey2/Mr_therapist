@@ -2,7 +2,7 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/5f3dc79e-b9b4-44b1-8526-0ab9b76637f5
+**UR TO RUN THE APL**:  https://quirky-thera-bot.lovable.app/
 
 ## How can I edit this code?
 
